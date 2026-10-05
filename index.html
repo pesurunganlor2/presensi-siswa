@@ -86,7 +86,7 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI9tGeFJ4spxFdgUrwlGrldkkPJVwO3eDz4uQZnc-2MsgIgBkSmsIILqBd_xtmIvJh/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7xvhp3o0B3Keg-3V2vEIEuzMF3-TVsVTOIYjWYOlmaE9zSzWpwyTF3KfLBfZZYSNQ/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
 
@@ -141,7 +141,11 @@
         result.forEach(siswa => {
           if (siswa.descriptor) {
             try {
-              const descriptorArray = JSON.parse(siswa.descriptor);
+              let cleanDesc = siswa.descriptor;
+              if (cleanDesc.startsWith('"') && cleanDesc.endsWith('"')) {
+                cleanDesc = cleanDesc.substring(1, cleanDesc.length - 1);
+              }
+              const descriptorArray = JSON.parse(cleanDesc);
               const float32Array = new Float32Array(descriptorArray);
               labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]));
             } catch (e) {
@@ -156,7 +160,6 @@
           return;
         }
 
-        // Toleransi dinaikkan ke 0.6 agar lebih mudah mendeteksi wajah
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
         statusBox.innerText = `Sistem Siap! Silakan berdiri di depan kamera.`;
 
