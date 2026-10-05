@@ -156,7 +156,8 @@
           return;
         }
 
-        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.5);
+        // Toleransi dinaikkan ke 0.6 agar lebih mudah mendeteksi wajah
+        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
         statusBox.innerText = `Sistem Siap! Silakan berdiri di depan kamera.`;
 
         mulaiScanOtomatis();
@@ -198,9 +199,13 @@
               statusBox.style.background = "#e8f5e9";
               statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
             }, 5000);
+          } else {
+            statusBox.style.background = "#fff3e0";
+            statusBox.style.color = "#e65100";
+            statusBox.innerText = "Wajah terdeteksi tapi belum dikenali. Pastikan kelas sudah sesuai.";
           }
         }
-      }, 1000);
+      }, 800);
     }
 
     function bicara(teks) {
