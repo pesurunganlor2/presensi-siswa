@@ -73,7 +73,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      /* Efek cermin (mirror) agar tampilan kamera depan terasa alami layaknya bercermin */
+      /* Efek cermin (mirror) */
       transform: scaleX(-1);
     }
     .btn {
@@ -153,6 +153,21 @@
     let faceMatcher = null;
     let dataSiswaList = [];
 
+    // Buka Kamera Laptop / HP Otomatis
+    async function startVideo() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true // Pengaturan umum yang didukung laptop maupun HP
+        });
+        video.srcObject = stream;
+      } catch (err) {
+        statusBox.style.display = "block";
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
+        statusBox.innerText = "Akses kamera ditolak atau tidak ditemukan: " + err.message;
+      }
+    }
+
     // Fungsi Pengucap Suara Otomatis
     function bunyikanSuara(teks) {
       if ('speechSynthesis' in window) {
@@ -166,6 +181,9 @@
 
     // Load AI & Mengambil Data Siswa dari Google Sheets
     async function init() {
+      // Jalankan kamera dulu agar tidak menunggu AI
+      startVideo();
+
       statusBox.style.display = "block";
       statusBox.innerText = "Memuat AI dan menghubungkan ke Google Sheets...";
 
@@ -192,24 +210,10 @@
           btnScan.disabled = false;
           btnScan.innerText = "Scan & Simpan Presensi";
         } else {
-          statusBox.innerText = "Belum ada data siswa terdaftar. Lakukan registrasi terlebih dahulu.";
+          statusBox.innerText = "Belum ada data siswa terdaftar di Google Sheets.";
         }
-
-        startVideo();
       } catch (err) {
-        statusBox.innerText = "Gagal memuat data: " + err.message;
-      }
-    }
-
-    // Buka Kamera Depan HP Guru
-    async function startVideo() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" } // 'user' mengaktifkan kamera depan HP
-        });
-        video.srcObject = stream;
-      } catch (err) {
-        alert("Gagal membuka kamera depan: " + err);
+        statusBox.innerText = "Gagal memuat AI/Data: " + err.message;
       }
     }
 
