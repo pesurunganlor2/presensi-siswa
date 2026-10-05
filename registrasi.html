@@ -8,9 +8,9 @@
   <style>
     body { font-family: Arial, sans-serif; background-color: #e8f5e9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
     .card { background: white; border-radius: 16px; padding: 20px; max-width: 400px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
-    .header-title { font-size: 15px; font-weight: bold; color: #1b5e20; margin-bottom: 4px; text-transform: uppercase; }
+    .header-title { font-size: 13px; font-weight: bold; color: #1b5e20; margin-bottom: 2px; text-transform: uppercase; }
     h2 { margin-top: 0; margin-bottom: 5px; color: #2e7d32; }
-    p { color: #666; font-size: 14px; margin-top: 0; }
+    p { color: #666; font-size: 13px; margin-top: 0; }
     .form-group { margin-bottom: 12px; text-align: left; }
     label { font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
     input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box; }
@@ -25,7 +25,7 @@
 </head>
 <body>
   <div class="card">
-    <div class="header-title">SDN Pesurungan Lor 2 Tegal</div>
+    <div class="header-title">SDN PESURUNGAN LOR 2 TEGAL</div>
     <h2>Registrasi Wajah Siswa</h2>
     <p>Isi Nama, Pilih Kelas, lalu Ambil Foto Wajah</p>
 
@@ -57,14 +57,14 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL6qqJBsuMzfJZMMznPP_5yabfpqTYW7acS-QSh6yq4xp2d5yJ7jf4I5UOc8qiGWWO/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI9tGeFJ4spxFdgUrwlGrldkkPJVwO3eDz4uQZnc-2MsgIgBkSmsIILqBd_xtmIvJh/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
     const btnRegister = document.getElementById('btnRegister');
 
     async function startVideo() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         video.srcObject = stream;
       } catch (err) {
         statusBox.style.display = "block";
