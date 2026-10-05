@@ -4,73 +4,149 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registrasi Siswa - SDN Pesurungan Lor 2 Tegal</title>
-  <!-- Load face-api.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #e8f5e9;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      text-align: center;
-      box-sizing: border-box;
-    }
-    .header-title {
-      font-size: 15px;
-      font-weight: bold;
-      color: #1b5e20;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
+    body { font-family: Arial, sans-serif; background-color: #e8f5e9; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .card { background: white; border-radius: 16px; padding: 20px; max-width: 400px; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; box-sizing: border-box; }
+    .header-title { font-size: 15px; font-weight: bold; color: #1b5e20; margin-bottom: 4px; text-transform: uppercase; }
     h2 { margin-top: 0; margin-bottom: 5px; color: #2e7d32; }
     p { color: #666; font-size: 14px; margin-top: 0; }
-    
     .form-group { margin-bottom: 12px; text-align: left; }
     label { font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
-    input, select {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box;
-    }
-
-    .video-container {
-      position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px;
-    }
+    input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box; }
+    .video-container { position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px; }
     video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-    
-    .btn {
-      background-color: #2e7d32; color: white; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer;
-    }
+    .btn { background-color: #2e7d32; color: white; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer; }
     .btn:disabled { background-color: #ccc; cursor: not-allowed; }
-
-    .status-box {
-      margin-top: 15px; padding: 12px; background-color: #e8f5e9; border-radius: 8px; color: #1b5e20; font-size: 14px; display: none; font-weight: bold;
-    }
+    .status-box { margin-top: 15px; padding: 12px; background-color: #e8f5e9; border-radius: 8px; color: #1b5e20; font-size: 14px; display: none; font-weight: bold; }
     .nav-link { display: inline-block; margin-top: 15px; color: #2e7d32; font-weight: bold; text-decoration: none; font-size: 14px; }
     .footer { margin-top: 18px; font-size: 12px; color: #555; border-top: 1px solid #eee; padding-top: 10px; font-weight: 500; }
   </style>
 </head>
 <body>
-
   <div class="card">
     <div class="header-title">SDN Pesurungan Lor 2 Tegal</div>
     <h2>Registrasi Wajah Siswa</h2>
     <p>Isi Nama, Pilih Kelas, lalu Ambil Foto Wajah</p>
 
-    <!-- Input Nama -->
     <div class="form-group">
       <label for="nama">Nama Lengkap Siswa:</label>
       <input type="text" id="nama" placeholder="Contoh: Ahmad Subagyo" required>
     </div>
 
-    <!-- Pilih Kelas -->
     <div class="form-group">
+      <label for="pilihKelas">Pilih Kelas:</label>
+      <select id="pilihKelas">
+        <option value="Kelas 1">Kelas 1</option>
+        <option value="Kelas 2">Kelas 2</option>
+        <option value="Kelas 3">Kelas 3</option>
+        <option value="Kelas 4">Kelas 4</option>
+        <option value="Kelas 5">Kelas 5</option>
+        <option value="Kelas 6">Kelas 6</option>
+      </select>
+    </div>
+
+    <div class="video-container">
+      <video id="video" autoplay muted playsinline></video>
+    </div>
+
+    <button id="btnRegister" class="btn" onclick="prosesRegistrasi()" disabled>Memuat AI & Kamera...</button>
+    <div id="statusBox" class="status-box"></div>
+    <a href="index.html" class="nav-link">← Kembali ke Halaman Presensi</a>
+    <div class="footer">Pengembang aplikasi: Heri Santoso MTI08</div>
+  </div>
+
+  <script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL6qqJBsuMzfJZMMznPP_5yabfpqTYW7acS-QSh6yq4xp2d5yJ7jf4I5UOc8qiGWWO/exec";
+    const video = document.getElementById('video');
+    const statusBox = document.getElementById('statusBox');
+    const btnRegister = document.getElementById('btnRegister');
+
+    async function startVideo() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        statusBox.style.display = "block";
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
+        statusBox.innerText = "Kamera gagal dibuka: " + err.message;
+      }
+    }
+
+    async function init() {
+      startVideo();
+      try {
+        const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        btnRegister.disabled = false;
+        btnRegister.innerText = "Daftarkan Wajah Siswa";
+      } catch (err) {
+        statusBox.style.display = "block";
+        statusBox.innerText = "Gagal memuat sistem AI: " + err.message;
+      }
+    }
+
+    async function prosesRegistrasi() {
+      const nama = document.getElementById('nama').value.trim();
+      const kelas = document.getElementById('pilihKelas').value;
+
+      if (!nama) {
+        alert("Silakan isi Nama Siswa terlebih dahulu!");
+        return;
+      }
+
+      btnRegister.disabled = true;
+      statusBox.style.display = "block";
+      statusBox.style.background = "#e8f5e9";
+      statusBox.style.color = "#1b5e20";
+      statusBox.innerText = "Mendeteksi wajah...";
+
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+      if (!detection) {
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
+        statusBox.innerText = "Wajah tidak terdeteksi! Pastikan wajah siswa menghadap kamera dengan jelas.";
+        btnRegister.disabled = false;
+        return;
+      }
+
+      const descriptorArray = Array.from(detection.descriptor);
+      const idSiswa = "SISWA_" + Date.now();
+
+      const payload = {
+        action: "registrasi",
+        nis: idSiswa,
+        nama: nama,
+        kelas: kelas,
+        descriptor: JSON.stringify(descriptorArray)
+      };
+
+      statusBox.style.background = "#e3f2fd";
+      statusBox.style.color = "#0d47a1";
+      statusBox.innerText = "Menyimpan data ke Google Sheets...";
+
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        statusBox.style.background = "#c8e6c9";
+        statusBox.style.color = "#1b5e20";
+        statusBox.innerText = `✅ Berhasil mendaftarkan ${nama} (${kelas})!`;
+        document.getElementById('nama').value = "";
+      } catch (err) {
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
+        statusBox.innerText = "Gagal menyimpan data registrasi.";
+      }
+      btnRegister.disabled = false;
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
