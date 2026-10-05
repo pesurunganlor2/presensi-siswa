@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Presensi Wajah - SDN Pesurungan Lor 2 Tegal</title>
+  <title>Registrasi Siswa - SDN Pesurungan Lor 2 Tegal</title>
   <!-- Load face-api.js -->
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <style>
@@ -33,90 +33,46 @@
       margin-bottom: 4px;
       text-transform: uppercase;
     }
-    h2 { 
-      margin-top: 0;
-      margin-bottom: 5px; 
-      color: #2e7d32; 
-    }
+    h2 { margin-top: 0; margin-bottom: 5px; color: #2e7d32; }
     p { color: #666; font-size: 14px; margin-top: 0; }
     
-    .form-group {
-      margin-bottom: 12px;
-      text-align: left;
-    }
-    label {
-      font-size: 12px;
-      font-weight: bold;
-      color: #333;
-      display: block;
-      margin-bottom: 5px;
-    }
-    select {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-      font-size: 14px;
-      outline: none;
+    .form-group { margin-bottom: 12px; text-align: left; }
+    label { font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
+    input, select {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box;
     }
 
     .video-container {
-      position: relative;
-      width: 100%;
-      height: 280px;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 15px;
+      position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px;
     }
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      /* Efek cermin (mirror) */
-      transform: scaleX(-1);
-    }
+    video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    
     .btn {
-      background-color: #2e7d32;
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      font-size: 16px;
-      font-weight: bold;
-      border-radius: 8px;
-      width: 100%;
-      cursor: pointer;
+      background-color: #2e7d32; color: white; border: none; padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px; width: 100%; cursor: pointer;
     }
     .btn:disabled { background-color: #ccc; cursor: not-allowed; }
 
     .status-box {
-      margin-top: 15px;
-      padding: 12px;
-      background-color: #e8f5e9;
-      border-radius: 8px;
-      color: #1b5e20;
-      font-size: 14px;
-      display: none;
+      margin-top: 15px; padding: 12px; background-color: #e8f5e9; border-radius: 8px; color: #1b5e20; font-size: 14px; display: none;
     }
-
-    .footer {
-      margin-top: 18px;
-      font-size: 12px;
-      color: #555;
-      border-top: 1px solid #eee;
-      padding-top: 10px;
-      font-weight: 500;
-    }
+    .nav-link { display: inline-block; margin-top: 15px; color: #2e7d32; font-weight: bold; text-decoration: none; font-size: 14px; }
+    .footer { margin-top: 18px; font-size: 12px; color: #555; border-top: 1px solid #eee; padding-top: 10px; font-weight: 500; }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <div class="header-title">Selamat Datang di<br>SDN Pesurungan Lor 2 Tegal</div>
-    <h2>Presensi Wajah</h2>
-    <p>Arahkan kamera ke wajah murid</p>
+    <div class="header-title">SDN Pesurungan Lor 2 Tegal</div>
+    <h2>Registrasi Wajah Siswa</h2>
+    <p>Isi Nama, Pilih Kelas, lalu Ambil Foto Wajah</p>
 
-    <!-- Pilih Kelas SD -->
+    <!-- Form Input Nama -->
+    <div class="form-group">
+      <label for="nama">Nama Lengkap Siswa:</label>
+      <input type="text" id="nama" placeholder="Contoh: Ahmad Subagyo" required>
+    </div>
+
+    <!-- Form Pilih Kelas -->
     <div class="form-group">
       <label for="pilihKelas">Pilih Kelas:</label>
       <select id="pilihKelas">
@@ -133,9 +89,11 @@
       <video id="video" autoplay muted playsinline></video>
     </div>
 
-    <button id="btnScan" class="btn" onclick="prosesScan()" disabled>Memuat AI & Data Siswa...</button>
+    <button id="btnRegister" class="btn" onclick="prosesRegistrasi()" disabled>Memuat AI & Kamera...</button>
 
     <div id="statusBox" class="status-box"></div>
+
+    <a href="index.html" class="nav-link">← Kembali ke Halaman Presensi</a>
 
     <div class="footer">
       Pengembang aplikasi: Heri Santoso MTI08
@@ -143,84 +101,55 @@
   </div>
 
   <script>
-    // URL Web App Google Apps Script Anda
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL6qqJBsuMzfJZMMznPP_5yabfpqTYW7acS-QSh6yq4xp2d5yJ7jf4I5UOc8qiGWWO/exec";
-
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
-    const btnScan = document.getElementById('btnScan');
+    const btnRegister = document.getElementById('btnRegister');
 
-    let faceMatcher = null;
-    let dataSiswaList = [];
-
-    // Buka Kamera Laptop / HP Otomatis
+    // Buka Kamera
     async function startVideo() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true // Pengaturan umum yang didukung laptop maupun HP
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
       } catch (err) {
         statusBox.style.display = "block";
         statusBox.style.background = "#ffebee";
         statusBox.style.color = "#c62828";
-        statusBox.innerText = "Akses kamera ditolak atau tidak ditemukan: " + err.message;
+        statusBox.innerText = "Kamera gagal dibuka: " + err.message;
       }
     }
 
-    // Fungsi Pengucap Suara Otomatis
-    function bunyikanSuara(teks) {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        const ucapan = new SpeechSynthesisUtterance(teks);
-        ucapan.lang = 'id-ID';
-        ucapan.rate = 1.0;
-        window.speechSynthesis.speak(ucapan);
-      }
-    }
-
-    // Load AI & Mengambil Data Siswa dari Google Sheets
+    // Inisialisasi AI & Kamera
     async function init() {
-      // Jalankan kamera dulu agar tidak menunggu AI
       startVideo();
-
-      statusBox.style.display = "block";
-      statusBox.innerText = "Memuat AI dan menghubungkan ke Google Sheets...";
-
       try {
         const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        // Fetch data siswa terdaftar dari tab DataSiswa
-        const res = await fetch(SCRIPT_URL);
-        const json = await res.json();
-
-        if (json.status === "success" && json.data.length > 0) {
-          dataSiswaList = json.data;
-          
-          const labeledDescriptors = dataSiswaList.map(s => {
-            const desc = new Float32Array(s.descriptor);
-            return new faceapi.LabeledFaceDescriptors(s.nis, [desc]);
-          });
-
-          faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
-          statusBox.innerText = "Sistem siap! Silakan arahkan kamera ke wajah siswa.";
-          btnScan.disabled = false;
-          btnScan.innerText = "Scan & Simpan Presensi";
-        } else {
-          statusBox.innerText = "Belum ada data siswa terdaftar di Google Sheets.";
-        }
+        btnRegister.disabled = false;
+        btnRegister.innerText = "Daftarkan Wajah Siswa";
       } catch (err) {
-        statusBox.innerText = "Gagal memuat AI/Data: " + err.message;
+        statusBox.style.display = "block";
+        statusBox.innerText = "Gagal memuat sistem AI: " + err.message;
       }
     }
 
-    // Proses Pindai Wajah Real-Time
-    async function prosesScan() {
-      btnScan.disabled = true;
+    // Proses Simpan Registrasi
+    async function prosesRegistrasi() {
+      const nama = document.getElementById('nama').value.trim();
+      const kelas = document.getElementById('pilihKelas').value;
+
+      if (!nama) {
+        alert("Silakan isi Nama Siswa terlebih dahulu!");
+        return;
+      }
+
+      btnRegister.disabled = true;
       statusBox.style.display = "block";
+      statusBox.style.background = "#e8f5e9";
+      statusBox.style.color = "#1b5e20";
       statusBox.innerText = "Mendeteksi wajah...";
 
       const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
@@ -228,67 +157,46 @@
       if (!detection) {
         statusBox.style.background = "#ffebee";
         statusBox.style.color = "#c62828";
-        statusBox.innerText = "Wajah tidak terdeteksi! Pastikan wajah terlihat jelas.";
-        bunyikanSuara("Wajah tidak terdeteksi");
-        btnScan.disabled = false;
+        statusBox.innerText = "Wajah tidak terdeteksi! Pastikan wajah siswa menghadap kamera dengan jelas.";
+        btnRegister.disabled = false;
         return;
       }
 
-      if (!faceMatcher) {
-        alert("Data siswa belum siap!");
-        btnScan.disabled = false;
-        return;
-      }
+      const descriptorArray = Array.from(detection.descriptor);
 
-      const match = faceMatcher.findBestMatch(detection.descriptor);
-      
-      if (match.label === "unknown") {
-        statusBox.style.background = "#ffebee";
-        statusBox.style.color = "#c62828";
-        statusBox.innerText = "Wajah tidak dikenali dalam sistem!";
-        bunyikanSuara("Wajah tidak dikenali");
-      } else {
-        const siswa = dataSiswaList.find(s => s.nis === match.label);
-        const kelasDipilih = document.getElementById('pilihKelas').value;
+      // Gunakan Waktu sebagai ID Unik pengganti NIS
+      const idSiswa = "SISWA_" + Date.now();
 
-        const payload = {
-          action: "presensi",
-          kelas: kelasDipilih,
-          nis: siswa.nis,
-          nama: siswa.nama,
-          status: "Hadir"
-        };
+      const payload = {
+        action: "registrasi",
+        nis: idSiswa,
+        nama: nama,
+        kelas: kelas,
+        descriptor: JSON.stringify(descriptorArray)
+      };
 
-        await kirimKeGoogleSheets(payload);
-      }
-
-      btnScan.disabled = false;
-    }
-
-    // Kirim Hasil ke Tab Presensi & Putar Suara
-    async function kirimKeGoogleSheets(dataSiswa) {
       statusBox.style.background = "#e3f2fd";
       statusBox.style.color = "#0d47a1";
-      statusBox.innerText = "Menyimpan data presensi...";
+      statusBox.innerText = "Menyimpan data ke Google Sheets...";
 
       try {
         await fetch(SCRIPT_URL, {
           method: "POST",
-          body: JSON.stringify(dataSiswa)
+          body: JSON.stringify(payload)
         });
 
         statusBox.style.background = "#e8f5e9";
         statusBox.style.color = "#1b5e20";
-        statusBox.innerText = `Absen Masuk Berhasil! Nama: ${dataSiswa.nama}`;
-
-        // Efek Suara Sukses
-        bunyikanSuara(`Absen masuk berhasil. Selamat belajar, ${dataSiswa.nama}`);
-
+        statusBox.innerText = `Berhasil mendaftarkan ${nama} (${kelas})!`;
+        
+        document.getElementById('nama').value = "";
       } catch (err) {
         statusBox.style.background = "#ffebee";
         statusBox.style.color = "#c62828";
-        statusBox.innerText = "Gagal menyimpan presensi ke Google Sheets.";
+        statusBox.innerText = "Gagal menyimpan data registrasi.";
       }
+
+      btnRegister.disabled = false;
     }
 
     window.onload = init;
