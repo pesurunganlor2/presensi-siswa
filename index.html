@@ -86,7 +86,7 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxL6qqJBsuMzfJZMMznPP_5yabfpqTYW7acS-QSh6yq4xp2d5yJ7jf4I5UOc8qiGWWO/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzI9tGeFJ4spxFdgUrwlGrldkkPJVwO3eDz4uQZnc-2MsgIgBkSmsIILqBd_xtmIvJh/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
 
@@ -96,7 +96,7 @@
 
     async function startVideo() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         video.srcObject = stream;
       } catch (err) {
         statusBox.style.background = "#ffebee";
@@ -145,7 +145,7 @@
               const float32Array = new Float32Array(descriptorArray);
               labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]));
             } catch (e) {
-              console.error("Gagal parse descriptor siswa:", siswa.nama);
+              console.error("Gagal parse descriptor:", siswa.nama);
             }
           }
         });
