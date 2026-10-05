@@ -129,27 +129,42 @@
 
       try {
         const res = await fetch(`${SCRIPT_URL}?action=getDataSiswa&kelas=${encodeURIComponent(kelas)}`);
-        const data = await res.json();
+        const result = await res.json();
 
-        if (!data || data.length === 0) {
+        if (!result || result.length === 0) {
           faceMatcher = null;
           statusBox.innerText = `Belum ada data siswa terdaftar di ${kelas}.`;
           return;
         }
 
-        const labeledDescriptors = data.map(siswa => {
-          const descriptorArray = JSON.parse(siswa.descriptor);
-          const float32Array = new Float32Array(descriptorArray);
-          return new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]);
+        const labeledDescriptors = [];
+        result.forEach(siswa => {
+          if (siswa.descriptor) {
+            try {
+              const descriptorArray = JSON.parse(siswa.descriptor);
+              const float32Array = new Float32Array(descriptorArray);
+              labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]));
+            } catch (e) {
+              console.error("Gagal parse descriptor siswa:", siswa.nama);
+            }
+          }
         });
+
+        if (labeledDescriptors.length === 0) {
+          faceMatcher = null;
+          statusBox.innerText = `Tidak ada data wajah valid di ${kelas}.`;
+          return;
+        }
 
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.5);
         statusBox.innerText = `Sistem Siap! Silakan berdiri di depan kamera.`;
 
-        // Mulai pemindaian otomatis berkala
         mulaiScanOtomatis();
 
       } catch (err) {
+        console.error(err);
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
         statusBox.innerText = "Gagal memuat data siswa dari server.";
       }
     }
@@ -174,13 +189,9 @@
             statusBox.style.color = "#1b5e20";
             statusBox.innerText = `✅ Selamat Datang, ${namaSiswa}!`;
 
-            // Bicarakan ucapan selamat
             bicara(`Selamat datang, ${namaSiswa}`);
-
-            // Simpan ke Google Sheets
             kirimPresensi(namaSiswa, kelasSiswa);
 
-            // Jeda 5 detik sebelum bisa absen siswa berikutnya
             setTimeout(() => {
               isProcessing = false;
               isCooldown = false;
@@ -189,7 +200,7 @@
             }, 5000);
           }
         }
-      }, 1000); // Cek wajah setiap 1 detik
+      }, 1000);
     }
 
     function bicara(teks) {
