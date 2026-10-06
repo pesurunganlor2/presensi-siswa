@@ -86,14 +86,16 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7xvhp3o0B3Keg-3V2vEIEuzMF3-TVsVTOIYjWYOlmaE9zSzWpwyTF3KfLBfZZYSNQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSPudAza-loFJdDbSNQ5cc8C-7xyRf21YHjhZ0thdFyEn1xBDXfgIebKkFKgGUTUXc/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
 
     let faceMatcher = null;
     let isProcessing = false;
-    let sudahAbsenSet = new Set();
     let scanInterval = null;
+    
+    // Objek untuk mencatat timestamp absensi terakhir per siswa
+    const lastScanMap = {};
 
     function startVideo() {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -125,7 +127,6 @@
 
     async function muatDataSiswa() {
       const kelas = document.getElementById('pilihKelas').value;
-      
       statusBox.style.background = "#e8f5e9";
       statusBox.style.color = "#1b5e20";
       statusBox.innerText = `Memuat data siswa ${kelas}...`;
@@ -190,18 +191,19 @@
           if (match.label !== 'unknown') {
             const namaSiswa = match.label;
             const kelasSiswa = document.getElementById('pilihKelas').value;
+            const now = Date.now();
 
-            // CEK JIKA SISWA SUDAH ABSEN
-            if (sudahAbsenSet.has(namaSiswa)) {
+            // PENGAMAN PER-SISWA: Cek apakah siswa yang sama baru saja absen kurang dari 5 detik lalu (5000 ms)
+            if (lastScanMap[namaSiswa] && (now - lastScanMap[namaSiswa] < 5000)) {
               statusBox.style.background = "#fff3e0";
               statusBox.style.color = "#e65100";
-              statusBox.innerText = `⚠️ ${namaSiswa} sudah presensi! Silakan giliran siswa lain.`;
+              statusBox.innerText = `⚠️ ${namaSiswa} sudah presensi! Silakan tunggu 5 detik atau ganti siswa.`;
               return;
             }
 
-            // SISWA BELUM ABSEN
+            // Kunci proses sementara agar tidak terjadi double-trigger dalam hitungan milidetik
             isProcessing = true;
-            sudahAbsenSet.add(namaSiswa);
+            lastScanMap[namaSiswa] = now;
 
             statusBox.style.background = "#c8e6c9";
             statusBox.style.color = "#1b5e20";
@@ -210,12 +212,12 @@
             bicara(`Selamat datang, ${namaSiswa}`);
             kirimPresensi(namaSiswa, kelasSiswa);
 
-            // Langsung buka kunci 2 detik kemudian buat siswa berikutnya
+            // Buka kunci kamera 1,5 detik setelah suara/status muncul agar siswa berikutnya bisa langsung scan
             setTimeout(() => {
               isProcessing = false;
               statusBox.style.background = "#e8f5e9";
               statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
-            }, 2000);
+            }, 1500);
 
           } else {
             statusBox.style.background = "#fff3e0";
