@@ -92,9 +92,7 @@
 
     let faceMatcher = null;
     let isProcessing = false;
-    
-    // Menyimpan daftar siswa yang sudah absen hari ini di sesi browser
-    let sudahAbsenSet = new Set();
+    let isCooldown = false;
 
     async function startVideo() {
       try {
@@ -125,7 +123,6 @@
 
     async function muatDataSiswa() {
       const kelas = document.getElementById('pilihKelas').value;
-      
       statusBox.style.background = "#e8f5e9";
       statusBox.style.color = "#1b5e20";
       statusBox.innerText = `Memuat data siswa ${kelas}...`;
@@ -149,4 +146,96 @@
                 cleanDesc = cleanDesc.substring(1, cleanDesc.length - 1);
               }
               const descriptorArray = JSON.parse(cleanDesc);
-              const float32Array = new Float32Array(descriptor
+              const float32Array = new Float32Array(descriptorArray);
+              labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]));
+            } catch (e) {
+              console.error("Gagal parse descriptor:", siswa.nama);
+            }
+          }
+        });
+
+        if (labeledDescriptors.length === 0) {
+          faceMatcher = null;
+          statusBox.innerText = `Tidak ada data wajah valid di ${kelas}.`;
+          return;
+        }
+
+        faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+        statusBox.innerText = `Sistem Siap! Silakan berdiri di depan kamera.`;
+
+        mulaiScanOtomatis();
+
+      } catch (err) {
+        console.error(err);
+        statusBox.style.background = "#ffebee";
+        statusBox.style.color = "#c62828";
+        statusBox.innerText = "Gagal memuat data siswa dari server.";
+      }
+    }
+
+    function mulaiScanOtomatis() {
+      setInterval(async () => {
+        if (isProcessing || isCooldown || !faceMatcher) return;
+
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+        if (detection) {
+          const match = faceMatcher.findBestMatch(detection.descriptor);
+
+          if (match.label !== 'unknown') {
+            isProcessing = true;
+            isCooldown = true;
+
+            const namaSiswa = match.label;
+            const kelasSiswa = document.getElementById('pilihKelas').value;
+
+            statusBox.style.background = "#c8e6c9";
+            statusBox.style.color = "#1b5e20";
+            statusBox.innerText = `✅ Selamat Datang, ${namaSiswa}!`;
+
+            bicara(`Selamat datang, ${namaSiswa}`);
+            kirimPresensi(namaSiswa, kelasSiswa);
+
+            setTimeout(() => {
+              isProcessing = false;
+              isCooldown = false;
+              statusBox.style.background = "#e8f5e9";
+              statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
+            }, 5000);
+          } else {
+            statusBox.style.background = "#fff3e0";
+            statusBox.style.color = "#e65100";
+            statusBox.innerText = "Wajah terdeteksi tapi belum dikenali. Pastikan kelas sudah sesuai.";
+          }
+        }
+      }, 800);
+    }
+
+    function bicara(teks) {
+      if ('speechSynthesis' in window) {
+        const uttr = new SpeechSynthesisUtterance(teks);
+        uttr.lang = 'id-ID';
+        window.speechSynthesis.speak(uttr);
+      }
+    }
+
+    async function kirimPresensi(nama, kelas) {
+      try {
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "presensi",
+            nama: nama,
+            kelas: kelas,
+            status: "Hadir"
+          })
+        });
+      } catch (err) {
+        console.error("Gagal menyimpan ke spreadsheet:", err);
+      }
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
