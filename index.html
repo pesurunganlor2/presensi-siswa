@@ -1,98 +1,13 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Presensi Wajah Otomatis - SDN Pesurungan Lor 2 Tegal</title>
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #e8f5e9;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      text-align: center;
-      box-sizing: border-box;
-    }
-    .header-title {
-      font-size: 13px;
-      font-weight: bold;
-      color: #1b5e20;
-      margin-bottom: 2px;
-      text-transform: uppercase;
-    }
-    h2 { margin-top: 0; margin-bottom: 5px; color: #2e7d32; }
-    p { color: #666; font-size: 13px; margin-top: 0; }
-    
-    .form-group { margin-bottom: 12px; text-align: left; }
-    label { font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
-    select {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box;
-    }
-
-    .video-container {
-      position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px;
-    }
-    video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-
-    .status-box {
-      margin-top: 10px; padding: 12px; background-color: #e8f5e9; border-radius: 8px; color: #1b5e20; font-size: 14px; font-weight: bold;
-    }
-    .nav-link { display: inline-block; margin-top: 15px; color: #2e7d32; font-weight: bold; text-decoration: none; font-size: 14px; }
-    .footer { margin-top: 18px; font-size: 12px; color: #555; border-top: 1px solid #eee; padding-top: 10px; font-weight: 500; }
-  </style>
-</head>
-<body>
-
-  <div class="card">
-    <div class="header-title">SDN PESURUNGAN LOR 2 TEGAL</div>
-    <h2>Presensi Wajah Otomatis</h2>
-    <p>Arahkan wajah ke kamera untuk presensi otomatis</p>
-
-    <div class="form-group">
-      <label for="pilihKelas">Pilih Kelas Hari Ini:</label>
-      <select id="pilihKelas" onchange="muatDataSiswa()">
-        <option value="Kelas 1">Kelas 1</option>
-        <option value="Kelas 2">Kelas 2</option>
-        <option value="Kelas 3">Kelas 3</option>
-        <option value="Kelas 4">Kelas 4</option>
-        <option value="Kelas 5">Kelas 5</option>
-        <option value="Kelas 6">Kelas 6</option>
-      </select>
-    </div>
-
-    <div class="video-container">
-      <video id="video" autoplay muted playsinline></video>
-    </div>
-
-    <div id="statusBox" class="status-box">Menyiapkan Kamera & Sistem AI...</div>
-
-    <a href="registrasi.html" class="nav-link">+ Registrasi Siswa Baru</a>
-
-    <div class="footer">
-      Pengembang aplikasi: Heri Santoso MTI08
-    </div>
-  </div>
-
-  <script>
+<script>
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7xvhp3o0B3Keg-3V2vEIEuzMF3-TVsVTOIYjWYOlmaE9zSzWpwyTF3KfLBfZZYSNQ/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
 
     let faceMatcher = null;
     let isProcessing = false;
-    let isCooldown = false;
+    
+    // Menyimpan daftar nama siswa yang SUDAH berhasil absen hari ini
+    let sudahAbsenList = new Set();
 
     async function startVideo() {
       try {
@@ -123,6 +38,10 @@
 
     async function muatDataSiswa() {
       const kelas = document.getElementById('pilihKelas').value;
+      
+      // Reset daftar nama yang sudah absen tiap kali ganti kelas
+      sudahAbsenList.clear();
+
       statusBox.style.background = "#e8f5e9";
       statusBox.style.color = "#1b5e20";
       statusBox.innerText = `Memuat data siswa ${kelas}...`;
@@ -175,7 +94,7 @@
 
     function mulaiScanOtomatis() {
       setInterval(async () => {
-        if (isProcessing || isCooldown || !faceMatcher) return;
+        if (isProcessing || !faceMatcher) return;
 
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
 
@@ -183,11 +102,22 @@
           const match = faceMatcher.findBestMatch(detection.descriptor);
 
           if (match.label !== 'unknown') {
-            isProcessing = true;
-            isCooldown = true;
-
             const namaSiswa = match.label;
             const kelasSiswa = document.getElementById('pilihKelas').value;
+
+            // KELOLA PENGECEKAN: Apakah nama ini SUDAH absen sebelumnya?
+            if (sudahAbsenList.has(namaSiswa)) {
+              statusBox.style.background = "#fff3e0";
+              statusBox.style.color = "#e65100";
+              statusBox.innerText = `⚠️ ${namaSiswa} sudah melakukan presensi!`;
+              return; // Stop, jangan kirim data lagi ke Google Sheets
+            }
+
+            // JIKA BELUM ABSEN:
+            isProcessing = true; // Kunci sebentar saat kirim data
+
+            // Masukkan nama ke daftar yang sudah absen
+            sudahAbsenList.add(namaSiswa);
 
             statusBox.style.background = "#c8e6c9";
             statusBox.style.color = "#1b5e20";
@@ -196,12 +126,13 @@
             bicara(`Selamat datang, ${namaSiswa}`);
             kirimPresensi(namaSiswa, kelasSiswa);
 
+            // Buka kunci dalam 2 detik agar SISWA LAIN bisa langsung scan tanpa nunggu lama
             setTimeout(() => {
               isProcessing = false;
-              isCooldown = false;
               statusBox.style.background = "#e8f5e9";
               statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
-            }, 5000);
+            }, 2000);
+
           } else {
             statusBox.style.background = "#fff3e0";
             statusBox.style.color = "#e65100";
@@ -237,5 +168,3 @@
 
     window.onload = init;
   </script>
-</body>
-</html>
