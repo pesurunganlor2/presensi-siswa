@@ -57,21 +57,22 @@
   </div>
 
   <script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby7xvhp3o0B3Keg-3V2vEIEuzMF3-TVsVTOIYjWYOlmaE9zSzWpwyTF3KfLBfZZYSNQ/exec";
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSPudAza-loFJdDbSNQ5cc8C-7xyRf21YHjhZ0thdFyEn1xBDXfgIebKkFKgGUTUXc/exec";
     const video = document.getElementById('video');
     const statusBox = document.getElementById('statusBox');
     const btnRegister = document.getElementById('btnRegister');
 
-    async function startVideo() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = stream;
-      } catch (err) {
-        statusBox.style.display = "block";
-        statusBox.style.background = "#ffebee";
-        statusBox.style.color = "#c62828";
-        statusBox.innerText = "Kamera gagal dibuka: " + err.message;
-      }
+    function startVideo() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => {
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          statusBox.style.display = "block";
+          statusBox.style.background = "#ffebee";
+          statusBox.style.color = "#c62828";
+          statusBox.innerText = "Kamera gagal dibuka: " + err.message;
+        });
     }
 
     async function init() {
