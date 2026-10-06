@@ -92,21 +92,23 @@
 
     let faceMatcher = null;
     let isProcessing = false;
-    let isCooldown = false;
+    let sudahAbsenSet = new Set();
+    let scanInterval = null;
 
-    async function startVideo() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = stream;
-      } catch (err) {
-        statusBox.style.background = "#ffebee";
-        statusBox.style.color = "#c62828";
-        statusBox.innerText = "Gagal mengakses kamera: " + err.message;
-      }
+    function startVideo() {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => {
+          video.srcObject = stream;
+        })
+        .catch(err => {
+          statusBox.style.background = "#ffebee";
+          statusBox.style.color = "#c62828";
+          statusBox.innerText = "Gagal mengakses kamera: " + err.message;
+        });
     }
 
     async function init() {
-      await startVideo();
+      startVideo();
       try {
         const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
@@ -123,6 +125,7 @@
 
     async function muatDataSiswa() {
       const kelas = document.getElementById('pilihKelas').value;
+      
       statusBox.style.background = "#e8f5e9";
       statusBox.style.color = "#1b5e20";
       statusBox.innerText = `Memuat data siswa ${kelas}...`;
@@ -174,8 +177,10 @@
     }
 
     function mulaiScanOtomatis() {
-      setInterval(async () => {
-        if (isProcessing || isCooldown || !faceMatcher) return;
+      if (scanInterval) clearInterval(scanInterval);
+
+      scanInterval = setInterval(async () => {
+        if (isProcessing || !faceMatcher) return;
 
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
 
@@ -183,11 +188,20 @@
           const match = faceMatcher.findBestMatch(detection.descriptor);
 
           if (match.label !== 'unknown') {
-            isProcessing = true;
-            isCooldown = true;
-
             const namaSiswa = match.label;
             const kelasSiswa = document.getElementById('pilihKelas').value;
+
+            // CEK JIKA SISWA SUDAH ABSEN
+            if (sudahAbsenSet.has(namaSiswa)) {
+              statusBox.style.background = "#fff3e0";
+              statusBox.style.color = "#e65100";
+              statusBox.innerText = `⚠️ ${namaSiswa} sudah presensi! Silakan giliran siswa lain.`;
+              return;
+            }
+
+            // SISWA BELUM ABSEN
+            isProcessing = true;
+            sudahAbsenSet.add(namaSiswa);
 
             statusBox.style.background = "#c8e6c9";
             statusBox.style.color = "#1b5e20";
@@ -196,12 +210,13 @@
             bicara(`Selamat datang, ${namaSiswa}`);
             kirimPresensi(namaSiswa, kelasSiswa);
 
+            // Langsung buka kunci 2 detik kemudian buat siswa berikutnya
             setTimeout(() => {
               isProcessing = false;
-              isCooldown = false;
               statusBox.style.background = "#e8f5e9";
               statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
-            }, 5000);
+            }, 2000);
+
           } else {
             statusBox.style.background = "#fff3e0";
             statusBox.style.color = "#e65100";
