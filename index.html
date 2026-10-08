@@ -91,11 +91,11 @@
     const statusBox = document.getElementById('statusBox');
 
     let faceMatcher = null;
-    let isProcessing = false;
     let scanInterval = null;
     
     // Objek untuk mencatat timestamp absensi terakhir per siswa
     const lastScanMap = {};
+    let lastDetectedStudent = ""; // PENGAMAN: Mencatat nama siswa yang sedang berdiri di depan kamera
 
     function startVideo() {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -181,7 +181,7 @@
       if (scanInterval) clearInterval(scanInterval);
 
       scanInterval = setInterval(async () => {
-        if (isProcessing || !faceMatcher) return;
+        if (!faceMatcher) return;
 
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
 
@@ -193,49 +193,49 @@
             const kelasSiswa = document.getElementById('pilihKelas').value;
             const now = Date.now();
 
-            // PENGAMAN PER-SISWA (Cooldown 5 detik)
-            if (lastScanMap[namaSiswa] && (now - lastScanMap[namaSiswa] < 5000)) {
+            // PENGAMAN 1: Jika siswa ini MASIH BERDIRI di depan kamera, abaikan agar tidak dobel
+            if (lastDetectedStudent === namaSiswa) {
+              return; 
+            }
+
+            // PENGAMAN 2: Cooldown 5 MENIT (300.000 ms) per siswa
+            if (lastScanMap[namaSiswa] && (now - lastScanMap[namaSiswa] < 300000)) {
               statusBox.style.background = "#fff3e0";
               statusBox.style.color = "#e65100";
-              statusBox.innerText = `⚠️ ${namaSiswa} sudah presensi! Silakan tunggu 5 detik.`;
+              statusBox.innerText = `⚠️ ${namaSiswa} sudah presensi! Silakan tunggu 5 menit atau ganti siswa.`;
               return;
             }
 
-            // Kunci proses
-            isProcessing = true;
+            // SIMPAN PENGUNCI NAMA DENGAN WAKTU SCAN
+            lastDetectedStudent = namaSiswa;
             lastScanMap[namaSiswa] = now;
 
             statusBox.style.background = "#c8e6c9";
             statusBox.style.color = "#1b5e20";
             statusBox.innerText = `✅ Selamat Datang, ${namaSiswa}!`;
 
-            // UTAMAKAN SUARA DAHULU SUPAYA INSTAN & TANPA DELAY
+            // SUARA INSTAN
             bicara(`Selamat datang, ${namaSiswa}`);
 
             // KIRIM DATA KE GOOGLE SHEETS
             kirimPresensi(namaSiswa, kelasSiswa);
 
-            // Buka kembali kunci scan setelah 1.5 detik
-            setTimeout(() => {
-              isProcessing = false;
-              statusBox.style.background = "#e8f5e9";
-              statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
-            }, 1500);
-
           } else {
+            lastDetectedStudent = ""; // Reset kunci jika wajah tidak dikenal
             statusBox.style.background = "#fff3e0";
             statusBox.style.color = "#e65100";
-            statusBox.innerText = "Wajah terdeteksi tapi belum mengenali. Pastikan pilihan kelas sudah sesuai.";
+            statusBox.innerText = "Wajah terdeteksi tapi belum dikenali. Pastikan pilihan kelas sesuai.";
           }
+        } else {
+          // Reset kunci jika siswa sudah pergi dari depan kamera
+          lastDetectedStudent = "";
         }
       }, 800);
     }
 
     function bicara(teks) {
       if ('speechSynthesis' in window) {
-        // Hentikan antrean suara lama agar suara baru instan berbunyi saat itu juga
         window.speechSynthesis.cancel();
-
         const uttr = new SpeechSynthesisUtterance(teks);
         uttr.lang = 'id-ID';
         uttr.rate = 1.0;
