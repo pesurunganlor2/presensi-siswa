@@ -34,12 +34,6 @@
     }
     h2 { margin-top: 0; margin-bottom: 5px; color: #2e7d32; }
     p { color: #666; font-size: 13px; margin-top: 0; }
-    
-    .form-group { margin-bottom: 12px; text-align: left; }
-    label { font-size: 12px; font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
-    select {
-      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 14px; outline: none; box-sizing: border-box;
-    }
 
     .video-container {
       position: relative; width: 100%; height: 260px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 15px;
@@ -59,18 +53,6 @@
     <div class="header-title">SDN PESURUNGAN LOR 2 TEGAL</div>
     <h2>Presensi Wajah Otomatis</h2>
     <p>Arahkan wajah ke kamera untuk presensi otomatis</p>
-
-    <div class="form-group">
-      <label for="pilihKelas">Pilih Kelas Hari Ini:</label>
-      <select id="pilihKelas" onchange="muatDataSiswa()">
-        <option value="Kelas 1">Kelas 1</option>
-        <option value="Kelas 2">Kelas 2</option>
-        <option value="Kelas 3">Kelas 3</option>
-        <option value="Kelas 4">Kelas 4</option>
-        <option value="Kelas 5">Kelas 5</option>
-        <option value="Kelas 6">Kelas 6</option>
-      </select>
-    </div>
 
     <div class="video-container">
       <video id="video" autoplay muted playsinline></video>
@@ -92,10 +74,11 @@
 
     let faceMatcher = null;
     let scanInterval = null;
+    let mapKelasSiswa = {}; // Memetakan Nama -> Kelas secara otomatis
     
     // Objek untuk mencatat timestamp absensi terakhir per siswa
     const lastScanMap = {};
-    let lastDetectedStudent = ""; // PENGAMAN: Mencatat nama siswa yang sedang berdiri di depan kamera
+    let lastDetectedStudent = ""; // Pengaman wajah berulang di depan kamera
 
     function startVideo() {
       navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -117,7 +100,7 @@
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
 
-        await muatDataSiswa();
+        await muatSemuaSiswa();
       } catch (err) {
         statusBox.style.background = "#ffebee";
         statusBox.style.color = "#c62828";
@@ -125,23 +108,25 @@
       }
     }
 
-    async function muatDataSiswa() {
-      const kelas = document.getElementById('pilihKelas').value;
+    async function muatSemuaSiswa() {
       statusBox.style.background = "#e8f5e9";
       statusBox.style.color = "#1b5e20";
-      statusBox.innerText = `Memuat data siswa ${kelas}...`;
+      statusBox.innerText = "Memuat seluruh data siswa sekolah...";
 
       try {
-        const res = await fetch(`${SCRIPT_URL}?action=getDataSiswa&kelas=${encodeURIComponent(kelas)}`);
+        // Ambil data dari semua kelas tanpa filter
+        const res = await fetch(`${SCRIPT_URL}?action=getDataSiswa&kelas=Semua`);
         const result = await res.json();
 
         if (!result || result.length === 0) {
           faceMatcher = null;
-          statusBox.innerText = `Belum ada data siswa terdaftar di ${kelas}.`;
+          statusBox.innerText = "Belum ada data siswa terdaftar di database.";
           return;
         }
 
         const labeledDescriptors = [];
+        mapKelasSiswa = {}; // Reset map
+
         result.forEach(siswa => {
           if (siswa.descriptor) {
             try {
@@ -151,7 +136,11 @@
               }
               const descriptorArray = JSON.parse(cleanDesc);
               const float32Array = new Float32Array(descriptorArray);
+              
               labeledDescriptors.push(new faceapi.LabeledFaceDescriptors(siswa.nama, [float32Array]));
+              
+              // Simpan informasi kelas siswa
+              mapKelasSiswa[siswa.nama] = siswa.kelas || "Kelas 1";
             } catch (e) {
               console.error("Gagal parse descriptor:", siswa.nama);
             }
@@ -160,12 +149,13 @@
 
         if (labeledDescriptors.length === 0) {
           faceMatcher = null;
-          statusBox.innerText = `Tidak ada data wajah valid di ${kelas}.`;
+          statusBox.innerText = "Tidak ada data wajah valid di database.";
           return;
         }
 
+        // TIngkat akurasi pencocokan 0.55 (presisi)
         faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.55);
-        statusBox.innerText = `Sistem Siap! Silakan berdiri di depan kamera.`;
+        statusBox.innerText = "Sistem Siap! Silakan berdiri di depan kamera.";
 
         mulaiScanOtomatis();
 
@@ -190,10 +180,10 @@
 
           if (match.label !== 'unknown') {
             const namaSiswa = match.label;
-            const kelasSiswa = document.getElementById('pilihKelas').value;
+            const kelasSiswa = mapKelasSiswa[namaSiswa] || "Kelas 1";
             const now = Date.now();
 
-            // PENGAMAN 1: Jika siswa ini MASIH BERDIRI di depan kamera, abaikan agar tidak dobel
+            // PENGAMAN 1: Jika siswa ini MASIH BERDIRI di depan kamera, abaikan
             if (lastDetectedStudent === namaSiswa) {
               return; 
             }
@@ -206,13 +196,13 @@
               return;
             }
 
-            // SIMPAN PENGUNCI NAMA DENGAN WAKTU SCAN
+            // SIMPAN PENGUNCI NAMA
             lastDetectedStudent = namaSiswa;
             lastScanMap[namaSiswa] = now;
 
             statusBox.style.background = "#c8e6c9";
             statusBox.style.color = "#1b5e20";
-            statusBox.innerText = `✅ Selamat Datang, ${namaSiswa}!`;
+            statusBox.innerText = `✅ Selamat Datang, ${namaSiswa} (${kelasSiswa})!`;
 
             // SUARA INSTAN
             bicara(`Selamat datang, ${namaSiswa}`);
@@ -224,7 +214,7 @@
             lastDetectedStudent = ""; // Reset kunci jika wajah tidak dikenal
             statusBox.style.background = "#fff3e0";
             statusBox.style.color = "#e65100";
-            statusBox.innerText = "Wajah terdeteksi tapi belum dikenali. Pastikan pilihan kelas sesuai.";
+            statusBox.innerText = "Wajah terdeteksi tapi belum dikenali. Silakan registrasi terlebih dahulu.";
           }
         } else {
           // Reset kunci jika siswa sudah pergi dari depan kamera
